@@ -1,30 +1,3 @@
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: secrets-volume
-  labels:
-    type: local
-spec:
-  storageClassName: manual
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: "/secrets"
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: secrets-claim
-spec:
-  storageClassName: manual
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi
----
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -55,9 +28,7 @@ spec:
                 tls_min_version = "tls12"
               }
 
-              storage "file" {
-                path = "/secrets"
-              }
+              storage "inmem" {}
 
               ui = true
               EOF
@@ -94,8 +65,6 @@ spec:
               mountPath: /etc/vault/config
             - name: vault-tls
               mountPath: /etc/vault/tls
-            - name: secrets-storage
-              mountPath: /secrets
         - name: vault-go
           image: "vault-go:v1"
           imagePullPolicy: Never
@@ -105,6 +74,3 @@ spec:
         - name: vault-tls
           secret:
             secretName: vault
-        - name: secrets-storage
-          persistentVolumeClaim:
-            claimName: secrets-claim

@@ -30,6 +30,18 @@ type InitResponse struct {
 	RootToken  string   `json:"root_token"`
 }
 
+type UnsealRequest struct {
+	Key   string `json:"key"`
+	Reset bool   `json:"reset"`
+}
+
+type UnsealResponse struct {
+	Sealed   bool `json:"sealed"`
+	T        int  `json:"t"`
+	N        int  `json:"n"`
+	Progress int  `json:"progress"`
+}
+
 func main() {
 	log.Println("Starting the vault-init service...")
 
@@ -81,6 +93,7 @@ func main() {
 			initialize()
 		case 503:
 			log.Println("Vault is sealed. Unsealing...")
+			initialize()
 		default:
 			log.Printf("Vault is in an unknown state. Status code: %d", response.StatusCode)
 		}
@@ -91,7 +104,7 @@ func main() {
 }
 
 func initialize() {
-	// initialize go struct
+	// initialize init request go struct
 	initRequest := InitRequest{
 		SecretShares:    5,
 		SecretThreshold: 3,
@@ -104,7 +117,7 @@ func initialize() {
 		return
 	}
 
-	// create web request to vault init endpoint
+	// create PUT request to vault init endpoint
 	r := bytes.NewReader(initRequestData)
 	request, err := http.NewRequest("PUT", vaultAddr+"/v1/sys/init", r)
 	if err != nil {
@@ -144,4 +157,59 @@ func initialize() {
 	}
 
 	fmt.Println(string(initRequestResponseBody))
+
+	for _, key := range initResponse.KeysBase64 {
+		done, err := unsealOne(key)
+		if done {
+			return
+		}
+
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}
+}
+
+func unsealOne(key string) (bool, error) {
+	unsealRequest := UnsealRequest{
+		Key: key,
+	}
+
+	unsealRequestData, err := json.Marshal(&unsealRequest)
+	if err != nil {
+		return false, err
+	}
+
+	r := bytes.NewReader(unsealRequestData)
+	request, err := http.NewRequest(http.MethodPut, vaultAddr+"/v1/sys/unseal", r)
+	if err != nil {
+		return false, err
+	}
+
+	response, err := httpClient.Do(request)
+	if err != nil {
+		return false, err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != 200 {
+		return false, fmt.Errorf("unseal: non-200 status code: %d", response.StatusCode)
+	}
+
+	unsealRequestResponseBody, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return false, err
+	}
+
+	var unsealResponse UnsealResponse
+	if err := json.Unmarshal(unsealRequestResponseBody, &unsealResponse); err != nil {
+		return false, err
+	}
+
+	if !unsealResponse.Sealed {
+		return true, nil
+	}
+
+	return false, nil
 }
