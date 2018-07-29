@@ -35,7 +35,7 @@ func main() {
 
 	vaultAddr = os.Getenv("VAULT_ADDR")
 	if vaultAddr == "" {
-		vaultAddr = "http://127.0.0.1:8200"
+		vaultAddr = "https://127.0.0.1:8200"
 	}
 
 	checkInterval = os.Getenv("CHECK_INTERVAL")
