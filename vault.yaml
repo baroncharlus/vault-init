@@ -1,11 +1,38 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: secrets-volume
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/secrets"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: secrets-claim
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: vault
   labels:
     app: vault
 spec:
-  replicas: 3
+  serviceName: "vault"
   selector:
     matchLabels:
       app: vault
@@ -14,10 +41,70 @@ spec:
       labels:
         app: vault
     spec:
+      initContainers:
+        - name: config
+          image: busybox
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              cat > /etc/vault/config/vault.hcl <<EOF
+              listener "tcp" {
+                address = "0.0.0.0:8200"
+                tls_cert_file = "/etc/vault/tls/vault.pem"
+                tls_key_file = "/etc/vault/tls/vault-key.pem"
+                tls_min_version = "tls12"
+              }
+
+              storage "file" {
+                path = "/secrets"
+              }
+
+              ui = true
+              EOF
+          volumeMounts:
+            - name: vault-config
+              mountPath: /etc/vault/config
       containers:
         - name: vault
           image: "vault:0.10.3"
           imagePullPolicy: Always
+          args: 
+            - "server"
+            - "-config=/etc/vault/config/vault.hcl"
+          ports:
+            - name: http
+              containerPort: 8200
+              protocol: "TCP"
+            - name: server
+              containerPort: 8201
+              protocol: "TCP"
+          readinessProbe:
+            httpGet:
+              path: "/v1/sys/health?standbyok=true"
+              port: 8200
+              scheme: HTTPS
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          securityContext:
+            capabilities:
+              add:
+                - IPC_LOCK
+          volumeMounts:
+            - name: vault-config
+              mountPath: /etc/vault/config
+            - name: vault-tls
+              mountPath: /etc/vault/tls
+            - name: secrets
+              mountPath: /secrets
         - name: vault-go
           image: "vault-go:v1"
           imagePullPolicy: Never
+      volumes:
+        - name: vault-config
+          emptyDir: {}
+        - name: vault-tls
+          secret:
+            secretName: vault
+        - name: secrets-storage
+          persistentVolumeClaim:
+            claimName: secrets-claim
