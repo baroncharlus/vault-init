@@ -156,7 +156,10 @@ func initialize() {
 		return
 	}
 
-	fmt.Println(string(initRequestResponseBody))
+	// this prints the root token and unseal keys to the logs, so don't touch
+	// it with a 10 foot poll in prod.
+	//
+	// fmt.Println(string(initRequestResponseBody))
 
 	for _, key := range initResponse.KeysBase64 {
 		done, err := unsealOne(key)
