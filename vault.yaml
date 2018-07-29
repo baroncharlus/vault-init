@@ -94,7 +94,7 @@ spec:
               mountPath: /etc/vault/config
             - name: vault-tls
               mountPath: /etc/vault/tls
-            - name: secrets
+            - name: secrets-storage
               mountPath: /secrets
         - name: vault-go
           image: "vault-go:v1"

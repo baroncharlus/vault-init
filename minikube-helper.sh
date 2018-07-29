@@ -2,8 +2,8 @@
 
 # usage: ./minikube-helper.sh <docker-image-ver>
 
-: "${1?please supply a vault version}"
-VAULT_VER=$1
+: "${1?please supply a vault init wrapper container version}"
+INIT_VER=$1
 MINIKUBE_PID=$(pidof VBoxHeadless)
 
 minikube delete
@@ -16,7 +16,7 @@ fi
 minikube start
 kubectl config use-context minikube
 eval "$(minikube docker-env)"
-docker build -t vault-go:"${VAULT_VER}" .
+docker build -t vault-go:"${INIT_VER}" .
 kubectl create secret generic vault \
   --from-file=ca.pem \
   --from-file=vault.pem \
