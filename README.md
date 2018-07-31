@@ -10,6 +10,7 @@ things working.
 
 _Not_ prod worthy.
 
+```
 sed -i 's/enabled=0/enabled=1/g' /etc/yum.repos.d/gp-f-rhel-7-server-extras-rpms.repo
 
 sudo yum install -y yum-utils \
@@ -95,5 +96,4 @@ kubectl create secret generic svc \
 
   kubectl create configmap vault \
 --from-literal gcs-bucket-name=prj-gousenaid-vaul-str01
-
-
+```
