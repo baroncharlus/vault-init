@@ -23,6 +23,8 @@ spec:
                 configMapKeyRef:
                   name: vault
                   key: gcs-bucket-name
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /var/secrets/key.json
           command: ["/bin/sh", "-c"]
           args:
             - |
@@ -35,8 +37,7 @@ spec:
               }
 
               storage "gcs" {
-                bucket = "{GCS_BUCKET_NAME}"
-                ha_enabled = "true"
+                bucket = "${GCS_BUCKET_NAME}"
               }
 
               ui = true
@@ -44,10 +45,15 @@ spec:
           volumeMounts:
             - name: vault-config
               mountPath: /etc/vault/config
+            - name: service-account
+              mountPath: /var/secrets
       containers:
         - name: vault
           image: "vault:0.10.3"
           imagePullPolicy: Always
+          env:
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /var/secrets/key.json
           args: 
             - "server"
             - "-config=/etc/vault/config/vault.hcl"
@@ -74,6 +80,8 @@ spec:
               mountPath: /etc/vault/config
             - name: vault-tls
               mountPath: /etc/vault/tls
+            - name: service-account
+              mountPath: /var/secrets
         - name: vault-go
           image: "vault-go:v1"
           imagePullPolicy: Never
@@ -83,3 +91,6 @@ spec:
         - name: vault-tls
           secret:
             secretName: vault
+        - name: service-account
+          secret:
+            secretName: svc
