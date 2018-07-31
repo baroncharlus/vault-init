@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"cloud.google.com/go/storage"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/oauth2/google"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -19,6 +21,7 @@ var (
 	checkInterval string
 	gcsBucketName string
 	httpClient    http.Client
+	storageClient *storage.Client
 )
 
 type InitRequest struct {
@@ -52,6 +55,11 @@ func main() {
 		vaultAddr = "https://127.0.0.1:8200"
 	}
 
+	vaultAddr = os.Getenv("GCS_BUCKET_NAME")
+	if gcsBucketName == "" {
+		log.Fatal("GCS_BUCKET_NAME must be set and not empty")
+	}
+
 	checkInterval = os.Getenv("CHECK_INTERVAL")
 	if checkInterval == "" {
 		checkInterval = "10"
@@ -63,6 +71,12 @@ func main() {
 	}
 
 	checkIntervalDuration := time.Duration(i) * time.Second
+
+	ctx := context.Background()
+	storageClient, err = storage.NewClient(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	httpClient = http.Client{
 		Transport: &http.Transport{
@@ -163,11 +177,25 @@ func initialize() {
 	//
 	// fmt.Println(string(initRequestResponseBody))
 
+	// create a client for connecting to our GCS bucket
+	ctx := context.Background()
+	bucket := storageClient.Bucket(gcsBucketName)
+
+	// create a file in our bucket with the name of our root token (TEST DEBUG
+	// ONLY)
+	rootTokenObject := bucket.Object(initResponse.RootToken).NewWriter(ctx)
+	defer rootTokenObject.Close()
+
 	for _, key := range initResponse.KeysBase64 {
 		done, err := unsealOne(key)
 		if done {
 			return
 		}
+
+		// create a file in our bucket with the name of each unseal token (TEST DEBUG
+		// ONLY)
+		unsealKeysObject := bucket.Object(key).NewWriter(ctx)
+		defer unsealKeysObject.Close()
 
 		if err != nil {
 			log.Println(err)
