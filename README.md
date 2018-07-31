@@ -10,6 +10,9 @@ things working.
 
 _Not_ prod worthy.
 
+
+# set up kube:
+
 ```
 sed -i 's/enabled=0/enabled=1/g' /etc/yum.repos.d/gp-f-rhel-7-server-extras-rpms.repo
 
@@ -53,24 +56,25 @@ net.bridge.bridge-nf-call-iptables = 1
 EOF
 sudo sysctl --system
 
-++++
-
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
+```
 
-~~~~~~
-
-# flannel:
+# set up flannel networking:
+```
 sysctl net.bridge.bridge-nf-call-iptables=1
 kubeadm init --apiserver-advertise-address=0.0.0.0 --pod-network-cidr=10.244.0.0/16
 kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.10.0/Documentation/kube-flannel.yml
+```
 
 # enable single vm env:
+```
 kubectl taint nodes --all node-role.kubernetes.io/master-
+```
 
-~~~~~~
-
+# use supplied csrs to gen kube certs:
+```
 cfssl gencert -initca ca-csr.json | cfssljson -bare ca
 
 cfssl gencert -ca=ca.pem \
@@ -87,9 +91,13 @@ kubectl create secret generic vault \
   --from-file=vault.pem \
   --from-file=vault-combined.pem \
   --from-file=vault-key.pem
+```
 
-# the name between the two = is the name we'll use to access the secret on the
-# mount
+# pass our ca and json credentials to the cluster:
+
+```
+the name between the two = is the name we'll use to access the secret on the
+mount
 
 kubectl create secret generic svc \
   --from-file=key.json=/home/elliot_wright/vault-init/svc.json
