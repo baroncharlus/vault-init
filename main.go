@@ -7,7 +7,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/oauth2/google"
 	"io/ioutil"
 	"log"
 	"net/http"
