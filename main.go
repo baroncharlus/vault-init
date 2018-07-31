@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"cloud.google.com/go/storage"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 var (
 	vaultAddr     string
 	checkInterval string
+	gcsBucketName string
 	httpClient    http.Client
 )
 
