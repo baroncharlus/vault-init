@@ -54,7 +54,7 @@ func main() {
 		vaultAddr = "https://127.0.0.1:8200"
 	}
 
-	vaultAddr = os.Getenv("GCS_BUCKET_NAME")
+	gcsBucketName = os.Getenv("GCS_BUCKET_NAME")
 	if gcsBucketName == "" {
 		log.Fatal("GCS_BUCKET_NAME must be set and not empty")
 	}
@@ -190,11 +190,6 @@ func initialize() {
 		if done {
 			return
 		}
-
-		// create a file in our bucket with the name of each unseal token (TEST DEBUG
-		// ONLY)
-		unsealKeysObject := bucket.Object(key).NewWriter(ctx)
-		defer unsealKeysObject.Close()
 
 		if err != nil {
 			log.Println(err)
